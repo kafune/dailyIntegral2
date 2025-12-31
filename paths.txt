@@ -1,0 +1,17 @@
+Host: btulehndzikuesmrzmhd.supabase.co
+
+paths:
+
+easy derivative -> GET /rest/v1/daily_derivatives?select=day%2Cdifficulty%2Cpuzzle_data&difficulty=eq.EASY&day=eq.108 
+
+medium derivative -> GET /rest/v1/daily_derivatives?select=day%2Cdifficulty%2Cpuzzle_data&difficulty=eq.MEDIUM&day=eq.108
+
+hard derivative -> GET /rest/v1/daily_derivatives?select=day%2Cdifficulty%2Cpuzzle_data&difficulty=eq.HARD&day=eq.108
+
+easy/medium/hard integrals
+	GET /rest/v1/daily_integrals?select=day%2Cdifficulty%2Cpuzzle_data&difficulty=eq.EASY&day=eq.108
+	GET /rest/v1/daily_integrals?select=day%2Cdifficulty%2Cpuzzle_data&difficulty=eq.MEDIUM&day=eq.108
+	GET /rest/v1/daily_integrals?select=day%2Cdifficulty%2Cpuzzle_data&difficulty=eq.HARD&day=eq.108
+
+daily limit (only one)
+	GET /rest/v1/daily_limits?select=day%2Cdifficulty%2Cpuzzle_data&difficulty=eq.LIMIT&day=eq.108
