@@ -37,8 +37,16 @@ export default function PuzzlePage() {
   const [showAnswer, setShowAnswer] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
 
-  const apiBase = useMemo(() => {
-    return process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001';
+  const buildApiUrl = useMemo(() => {
+    const base = process.env.NEXT_PUBLIC_API_BASE || '';
+    return (params: URLSearchParams) => {
+      if (!base) {
+        return `/api/daily?${params.toString()}`;
+      }
+      const url = new URL('/api/daily', base);
+      params.forEach((value, key) => url.searchParams.set(key, value));
+      return url.toString();
+    };
   }, []);
 
   useEffect(() => {
@@ -57,13 +65,15 @@ export default function PuzzlePage() {
 
     const fetchPuzzle = async () => {
       setLoading(true);
-      const url = new URL('/api/daily', apiBase);
-      url.searchParams.set('type', type);
-      url.searchParams.set('difficulty', difficulty);
-      url.searchParams.set('day', day);
+      const params = new URLSearchParams({
+        type,
+        difficulty,
+        day
+      });
+      const url = buildApiUrl(params);
 
       try {
-        const response = await fetch(url.toString());
+        const response = await fetch(url);
         if (!response.ok) {
           const text = await response.text();
           setState({ data: null, error: text || `Erro ${response.status}` });
@@ -79,7 +89,7 @@ export default function PuzzlePage() {
     };
 
     fetchPuzzle();
-  }, [apiBase, router.isReady, router.query]);
+  }, [buildApiUrl, router.isReady, router.query]);
 
   return (
     <main className="page">

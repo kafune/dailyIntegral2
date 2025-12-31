@@ -67,13 +67,19 @@ export default function Home() {
   const [results, setResults] = useState<Record<string, ResultState>>({});
   const [isoDate, setIsoDate] = useState(toISODate(dateFromDay(DEFAULT_DAY)));
 
-  const apiBase = useMemo(() => {
-    return process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3001';
-  }, []);
-
   const computedDate = useMemo(() => {
     return formatDate(dateFromDay(day));
   }, [day]);
+
+  const buildApiUrl = (params: URLSearchParams) => {
+    const base = process.env.NEXT_PUBLIC_API_BASE || '';
+    if (!base) {
+      return `/api/daily?${params.toString()}`;
+    }
+    const url = new URL('/api/daily', base);
+    params.forEach((value, key) => url.searchParams.set(key, value));
+    return url.toString();
+  };
 
   const handleDayChange = (value: number) => {
     if (!Number.isFinite(value)) return;
@@ -90,13 +96,15 @@ export default function Home() {
   };
 
   const fetchDaily = async (type: DailyType, difficulty: string): Promise<ResultState> => {
-    const url = new URL('/api/daily', apiBase);
-    url.searchParams.set('type', type);
-    url.searchParams.set('difficulty', difficulty);
-    url.searchParams.set('day', String(day));
+    const params = new URLSearchParams({
+      type,
+      difficulty,
+      day: String(day)
+    });
+    const url = buildApiUrl(params);
 
     try {
-      const response = await fetch(url.toString());
+      const response = await fetch(url);
       if (!response.ok) {
         const text = await response.text();
         return { data: null, error: text || `Erro ${response.status}` };
