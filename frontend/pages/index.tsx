@@ -77,7 +77,6 @@ export default function Home() {
               onChange={(event) => handleDateChange(event.target.value)}
             />
           </label>
-          <p className="hint">Dia no sistema: {day}</p>
           <p className="hint">Data equivalente: {computedDate}</p>
         </div>
       </header>
