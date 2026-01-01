@@ -34,6 +34,7 @@ export default function PuzzlePage() {
   const router = useRouter();
   const [state, setState] = useState<ResultState>({ data: null, error: null });
   const [loading, setLoading] = useState(false);
+  const [showHints, setShowHints] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
 
@@ -57,6 +58,7 @@ export default function PuzzlePage() {
 
     setShowAnswer(false);
     setShowSolution(false);
+    setShowHints(false);
 
     if (!type || !difficulty || !day) {
       setState({ data: null, error: 'Parâmetros inválidos.' });
@@ -125,11 +127,20 @@ export default function PuzzlePage() {
           {state.data.puzzle_data.hints?.length ? (
             <div className="detail-section">
               <h3>Dicas</h3>
-              <ul>
-                {state.data.puzzle_data.hints.map((hint) => (
-                  <li key={hint}>{hint}</li>
-                ))}
-              </ul>
+              <button
+                className="secondary"
+                type="button"
+                onClick={() => setShowHints((value) => !value)}
+              >
+                {showHints ? 'Esconder dicas' : 'Mostrar dicas'}
+              </button>
+              {showHints && (
+                <ul>
+                  {state.data.puzzle_data.hints.map((hint) => (
+                    <li key={hint}>{hint}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           ) : null}
 
