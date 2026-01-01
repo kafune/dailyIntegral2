@@ -37,6 +37,10 @@ export default function PuzzlePage() {
   const [showHints, setShowHints] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
+  const [translatedSolution, setTranslatedSolution] = useState<string | null>(null);
+  const [useTranslation, setUseTranslation] = useState(false);
+  const [translating, setTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
 
   const buildApiUrl = useMemo(() => {
     const base = process.env.NEXT_PUBLIC_API_BASE || '';
@@ -59,6 +63,10 @@ export default function PuzzlePage() {
     setShowAnswer(false);
     setShowSolution(false);
     setShowHints(false);
+    setTranslatedSolution(null);
+    setUseTranslation(false);
+    setTranslating(false);
+    setTranslateError(null);
 
     if (!type || !difficulty || !day) {
       setState({ data: null, error: 'Parâmetros inválidos.' });
@@ -92,6 +100,51 @@ export default function PuzzlePage() {
 
     fetchPuzzle();
   }, [buildApiUrl, router.isReady, router.query]);
+
+  const translateSolution = async () => {
+    if (translating || !state.data?.puzzle_data.solutionMarkdown) return;
+
+    if (translatedSolution) {
+      setUseTranslation((value) => !value);
+      return;
+    }
+
+    setTranslating(true);
+    setTranslateError(null);
+
+    try {
+      const response = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: state.data.puzzle_data.solutionMarkdown, source: 'en', target: 'pt' })
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        setTranslateError(text || 'Falha ao traduzir.');
+        return;
+      }
+
+      const payload = (await response.json()) as { translatedText?: string };
+      if (!payload.translatedText) {
+        setTranslateError('Resposta inválida da tradução.');
+        return;
+      }
+
+      setTranslatedSolution(payload.translatedText);
+      setUseTranslation(true);
+    } catch (err) {
+      setTranslateError(err instanceof Error ? err.message : 'Falha ao traduzir.');
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  const solutionLabel = () => {
+    if (translating) return 'Traduzindo...';
+    if (!translatedSolution) return 'Traduzir para PT-BR';
+    return useTranslation ? 'Ver original' : 'Ver tradução';
+  };
 
   return (
     <main className="page">
@@ -161,17 +214,32 @@ export default function PuzzlePage() {
           {state.data.puzzle_data.solutionMarkdown ? (
             <div className="detail-section">
               <h3>Solução</h3>
-              <button
-                className="secondary"
-                type="button"
-                onClick={() => setShowSolution((value) => !value)}
-              >
-                {showSolution ? 'Esconder solução' : 'Mostrar solução'}
-              </button>
+              <div className="toggle-row">
+                <button
+                  className="secondary"
+                  type="button"
+                  onClick={() => setShowSolution((value) => !value)}
+                >
+                  {showSolution ? 'Esconder solução' : 'Mostrar solução'}
+                </button>
+                {showSolution && (
+                  <button
+                    className="secondary"
+                    type="button"
+                    onClick={translateSolution}
+                    disabled={translating}
+                  >
+                    {solutionLabel()}
+                  </button>
+                )}
+              </div>
+              {translateError && <p className="error">{translateError}</p>}
               {showSolution && (
                 <div className="solution markdown">
                   <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                    {state.data.puzzle_data.solutionMarkdown}
+                    {useTranslation && translatedSolution
+                      ? translatedSolution
+                      : state.data.puzzle_data.solutionMarkdown}
                   </ReactMarkdown>
                 </div>
               )}
