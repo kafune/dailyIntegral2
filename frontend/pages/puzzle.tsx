@@ -95,9 +95,9 @@ export default function PuzzlePage() {
     <main className="page">
       <header className="detail-header">
         <div>
-          <p className="eyebrow">Daily Integralforme</p>
+          <p className="eyebrow">Integralforme Diário</p>
           <h1>Detalhe do desafio</h1>
-          <p className="subtitle">Abra o enunciado completo e compartilhe a solucao.</p>
+          <p className="subtitle">Abra o enunciado completo e compartilhe a solução.</p>
         </div>
         <div className="controls">
           <Link className="primary" href="/">
@@ -149,13 +149,13 @@ export default function PuzzlePage() {
 
           {state.data.puzzle_data.solutionMarkdown ? (
             <div className="detail-section">
-              <h3>Solucao</h3>
+              <h3>Solução</h3>
               <button
                 className="secondary"
                 type="button"
                 onClick={() => setShowSolution((value) => !value)}
               >
-                {showSolution ? 'Esconder solucao' : 'Mostrar solucao'}
+                {showSolution ? 'Esconder solução' : 'Mostrar solução'}
               </button>
               {showSolution && (
                 <div className="solution markdown">

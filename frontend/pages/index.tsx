@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BlockMath } from 'react-katex';
 
 type DailyType = 'derivatives' | 'integrals' | 'limits';
@@ -63,8 +63,8 @@ const dayFromISODate = (isoDate: string) => {
 
 export default function Home() {
   const [day, setDay] = useState(DEFAULT_DAY);
-  const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Record<string, ResultState>>({});
+  const [loadingByKey, setLoadingByKey] = useState<Record<string, boolean>>({});
   const [isoDate, setIsoDate] = useState(toISODate(dateFromDay(DEFAULT_DAY)));
 
   const computedDate = useMemo(() => {
@@ -81,12 +81,6 @@ export default function Home() {
     return url.toString();
   };
 
-  const handleDayChange = (value: number) => {
-    if (!Number.isFinite(value)) return;
-    setDay(value);
-    setIsoDate(toISODate(dateFromDay(value)));
-  };
-
   const handleDateChange = (value: string) => {
     setIsoDate(value);
     const nextDay = dayFromISODate(value);
@@ -94,6 +88,11 @@ export default function Home() {
       setDay(nextDay);
     }
   };
+
+  useEffect(() => {
+    setResults({});
+    setLoadingByKey({});
+  }, [day]);
 
   const fetchDaily = async (type: DailyType, difficulty: string): Promise<ResultState> => {
     const params = new URLSearchParams({
@@ -116,38 +115,21 @@ export default function Home() {
     }
   };
 
-  const loadAll = async () => {
-    setLoading(true);
-    const next: Record<string, ResultState> = {};
-
-    const derivativeTasks = DIFFICULTIES.map(async (difficulty) => {
-      const key = `derivatives-${difficulty}`;
-      next[key] = await fetchDaily('derivatives', difficulty);
-    });
-
-    const integralTasks = DIFFICULTIES.map(async (difficulty) => {
-      const key = `integrals-${difficulty}`;
-      next[key] = await fetchDaily('integrals', difficulty);
-    });
-
-    const limitKey = 'limits-LIMIT';
-    const limitTask = fetchDaily('limits', 'LIMIT').then((result) => {
-      next[limitKey] = result;
-    });
-
-    await Promise.all([...derivativeTasks, ...integralTasks, limitTask]);
-    setResults(next);
-    setLoading(false);
+  const loadOne = async (key: string, type: DailyType, difficulty: string) => {
+    setLoadingByKey((prev) => ({ ...prev, [key]: true }));
+    const result = await fetchDaily(type, difficulty);
+    setResults((prev) => ({ ...prev, [key]: result }));
+    setLoadingByKey((prev) => ({ ...prev, [key]: false }));
   };
 
   return (
     <main className="page">
       <header className="hero">
         <div>
-          <p className="eyebrow">Daily Integralforme</p>
+          <p className="eyebrow">Integralforme Diário</p>
           <h1>Resolva. Compartilhe. Compare.</h1>
           <p className="subtitle">
-            Viewer para integrais, derivadas e limites diários. Sem distrações, só a questão.
+            Visualizador de integrais, derivadas e limites diários. Sem distrações, só a questão.
           </p>
         </div>
         <div className="controls">
@@ -159,10 +141,7 @@ export default function Home() {
               onChange={(event) => handleDateChange(event.target.value)}
             />
           </label>
-          <button className="primary" onClick={loadAll} disabled={loading}>
-            {loading ? 'Carregando...' : 'Carregar desafios'}
-          </button>
-          <p className="hint">Dia atual usado no site: 108</p>
+          <p className="hint">Dia no sistema: {day}</p>
           <p className="hint">Data equivalente: {computedDate}</p>
         </div>
       </header>
@@ -178,6 +157,8 @@ export default function Home() {
                 key={key}
                 title={`Dificuldade ${difficulty}`}
                 state={state}
+                loading={loadingByKey[key]}
+                onClick={() => loadOne(key, 'derivatives', difficulty)}
                 href={`/puzzle?type=derivatives&difficulty=${difficulty}&day=${day}`}
               />
             );
@@ -194,6 +175,8 @@ export default function Home() {
                 key={key}
                 title={`Dificuldade ${difficulty}`}
                 state={state}
+                loading={loadingByKey[key]}
+                onClick={() => loadOne(key, 'integrals', difficulty)}
                 href={`/puzzle?type=integrals&difficulty=${difficulty}&day=${day}`}
               />
             );
@@ -203,8 +186,10 @@ export default function Home() {
         <div className="column">
           <h2>Limite</h2>
           <PuzzleCard
-            title="Daily limit"
+            title="Limite diário"
             state={results['limits-LIMIT']}
+            loading={loadingByKey['limits-LIMIT']}
+            onClick={() => loadOne('limits-LIMIT', 'limits', 'LIMIT')}
             href={`/puzzle?type=limits&difficulty=LIMIT&day=${day}`}
           />
         </div>
@@ -216,30 +201,52 @@ export default function Home() {
 function PuzzleCard({
   title,
   state,
-  href
+  href,
+  loading,
+  onClick
 }: {
   title: string;
   state?: ResultState;
   href: string;
+  loading?: boolean;
+  onClick: () => void;
 }) {
   return (
-    <Link className="card-link" href={href}>
-      <article className="card card-clickable">
+    <article
+      className="card card-clickable"
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+    >
       <div className="card-header">
         <h3>{title}</h3>
       </div>
-      {!state && <p className="muted">Clique em carregar para ver o desafio.</p>}
+      {!state && !loading && <p className="muted">Clique para carregar o desafio.</p>}
+      {loading && <p className="muted">Carregando...</p>}
       {state?.error && <p className="error">{state.error}</p>}
       {state?.data && (
         <div className="puzzle">
           <BlockMath math={state.data.puzzle_data.latex} />
         </div>
       )}
-      {state && !state.data && !state.error && (
+      {state && !state.data && !state.error && !loading && (
         <p className="muted">Nenhum resultado encontrado.</p>
       )}
-      <div className="card-footer">Ver detalhes →</div>
-      </article>
-    </Link>
+      <div className="card-footer">
+        <Link
+          className="card-link"
+          href={href}
+          onClick={(event) => event.stopPropagation()}
+        >
+          Ver detalhes →
+        </Link>
+      </div>
+    </article>
   );
 }
