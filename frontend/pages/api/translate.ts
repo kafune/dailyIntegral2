@@ -35,18 +35,40 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<TranslateBody | ErrorBody>
 ) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Allow', 'GET, POST, OPTIONS');
+    return res.status(204).end();
+  }
+
+  if (req.method !== 'POST' && req.method !== 'GET') {
+    res.setHeader('Allow', 'GET, POST, OPTIONS');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const text = typeof req.body?.text === 'string' ? req.body.text : '';
+  let payload: { text?: string; source?: string; target?: string } = {};
+  if (req.method === 'GET') {
+    payload = {
+      text: typeof req.query.text === 'string' ? req.query.text : '',
+      source: typeof req.query.source === 'string' ? req.query.source : undefined,
+      target: typeof req.query.target === 'string' ? req.query.target : undefined
+    };
+  } else if (typeof req.body === 'string') {
+    try {
+      payload = JSON.parse(req.body);
+    } catch {
+      payload = {};
+    }
+  } else {
+    payload = req.body || {};
+  }
+
+  const text = typeof payload?.text === 'string' ? payload.text : '';
   if (!text.trim()) {
     return res.status(400).json({ error: 'text is required' });
   }
 
-  const source = typeof req.body?.source === 'string' ? req.body.source : DEFAULT_SOURCE;
-  const target = typeof req.body?.target === 'string' ? req.body.target : DEFAULT_TARGET;
+  const source = typeof payload?.source === 'string' ? payload.source : DEFAULT_SOURCE;
+  const target = typeof payload?.target === 'string' ? payload.target : DEFAULT_TARGET;
   const apiKey = process.env.LIBRETRANSLATE_API_KEY || '';
 
   const { protectedText, placeholders } = protectLatex(text);
